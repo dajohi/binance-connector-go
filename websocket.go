@@ -1,7 +1,9 @@
 package binance_connector
 
 import (
+	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -51,12 +53,18 @@ func newWsConfig(endpoint string) *WsConfig {
 	}
 }
 
+var NetDialContext func(ctx context.Context, network, addr string) (net.Conn, error)
+
 var wsServe = func(cfg *WsConfig, handler WsHandler, errHandler ErrHandler) (doneCh, stopCh chan struct{}, err error) {
 	Dialer := websocket.Dialer{
 		Proxy:             http.ProxyFromEnvironment,
 		HandshakeTimeout:  45 * time.Second,
 		EnableCompression: false,
 	}
+	if NetDialContext != nil {
+		Dialer.NetDialContext = NetDialContext
+	}
+
 	headers := http.Header{}
 	headers.Add("User-Agent", fmt.Sprintf("%s/%s", Name, Version))
 	c, _, err := Dialer.Dial(cfg.Endpoint, headers)
